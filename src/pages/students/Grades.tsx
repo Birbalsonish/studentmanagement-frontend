@@ -87,6 +87,7 @@ export default function Grades() {
           <h1 className="text-2xl font-semibold">Grades</h1>
           <div className="flex gap-2">
             <Button
+             variant="outline"
               className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90"
               onClick={() => {
                 setSelectedGrade(null);

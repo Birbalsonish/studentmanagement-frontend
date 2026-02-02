@@ -100,6 +100,7 @@ export default function Fees() {
           <h1 className="text-2xl font-semibold">Fees</h1>
           <div className="flex gap-2">
             <Button
+             variant="outline"
               className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90"
               onClick={() => {
                 setSelectedFee(null);
@@ -116,19 +117,19 @@ export default function Fees() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Total Amount"
-            value={`₹${totalAmount}`}
+            value={`Rs${totalAmount}`}
             icon={DollarSign}
             color="bg-blue-500/70 text-white"
           />
           <StatCard
             title="Paid Amount"
-            value={`₹${paidAmount}`}
+            value={`Rs${paidAmount}`}
             icon={CheckCircle}
             color="bg-green-500/70 text-white"
           />
           <StatCard
             title="Pending Amount"
-            value={`₹${pendingAmount}`}
+            value={`Rs${pendingAmount}`}
             icon={AlertCircle}
             color="bg-red-500/70 text-white"
           />

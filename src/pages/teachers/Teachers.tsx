@@ -89,6 +89,7 @@ export default function Teachers() {
           <h1 className="text-2xl font-semibold">Teachers</h1>
           <div className="flex gap-2">
             <Button
+             variant="outline"
               className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90"
               onClick={() => {
                 setSelectedTeacher(null);
