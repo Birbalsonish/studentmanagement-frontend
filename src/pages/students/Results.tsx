@@ -36,6 +36,10 @@ const columns: ColumnDef<Result>[] = [
     accessorKey: "studentName",
     header: "Student Name",
   },
+ {
+    accessorKey: "studentId",
+    header: "Student ID",
+  },
   {
     accessorKey: "class",
     header: "Class",

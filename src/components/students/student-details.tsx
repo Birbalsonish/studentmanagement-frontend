@@ -23,6 +23,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useEffect } from "react";
 import type { Student } from "@/lib/types";
+import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
 
 interface ManageStudentProps {
   isOpen: boolean;
@@ -53,7 +54,6 @@ export default function ManageStudentDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -64,18 +64,22 @@ export default function ManageStudentDetails({
 
   useEffect(() => {
     if (student) {
-      setValue("name", student.name);
-      setValue("email", student.email);
-      setValue("phone", student.phone);
-      setValue("dob", student.dob);
-      setValue("studentId", student.studentId);
-      setValue("class", student.class);
-      setValue("rollNo", student.rollNo);
-      setValue("status", student.status);
+      reset({
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
+        dob: student.dob,
+        studentId: student.studentId,
+        class: student.class,
+        rollNo: student.rollNo,
+        status: student.status,
+      });
     } else {
-      reset();
+      reset({
+        status: "Active",
+      });
     }
-  }, [student, setValue, reset]);
+  }, [student, reset]);
 
   const onSubmit = (data: FormData) => {
     if (student) {
@@ -114,9 +118,12 @@ export default function ManageStudentDetails({
                 <Input {...register("phone")} placeholder="Phone number" />
               </FormField>
 
-              <FormField label="Date of Birth" error={errors.dob?.message}>
-                <Input type="date" {...register("dob")} />
-              </FormField>
+              <NepaliDatePickerField
+                name="dob"
+                control={control}
+                label="Date of Birth (Nepali)"
+                error={errors.dob?.message}
+              />
 
               <FormField label="Student ID" error={errors.studentId?.message}>
                 <Input {...register("studentId")} placeholder="Student ID" />

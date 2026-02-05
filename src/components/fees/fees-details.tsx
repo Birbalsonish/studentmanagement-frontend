@@ -23,6 +23,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useEffect } from "react";
 import type { Fee } from "@/lib/types";
+import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
 
 interface ManageFeeProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ interface ManageFeeProps {
 
 const schema = yup.object({
   studentName: yup.string().required("Student name is required"),
+  studentId: yup.number().required("Student ID is required"),
   amount: yup.number().required("Amount is required").min(0),
   dueDate: yup.string().required("Due date is required"),
   status: yup.string().oneOf(["Paid", "Pending", "Overdue"]).required("Status is required"),
@@ -49,7 +51,6 @@ export default function ManageFeeDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -60,14 +61,19 @@ export default function ManageFeeDetails({
 
   useEffect(() => {
     if (fee) {
-      setValue("studentName", fee.studentName);
-      setValue("amount", fee.amount);
-      setValue("dueDate", fee.dueDate);
-      setValue("status", fee.status);
+      reset({
+        studentName: fee.studentName,
+        studentId: fee.studentId,
+        amount: fee.amount,
+        dueDate: fee.dueDate,
+        status: fee.status,
+      });
     } else {
-      reset();
+      reset({
+        status: "Pending",
+      });
     }
-  }, [fee, setValue, reset]);
+  }, [fee, reset]);
 
   const onSubmit = (data: FormData) => {
     if (fee) {
@@ -98,13 +104,35 @@ export default function ManageFeeDetails({
                 <Input {...register("studentName")} placeholder="Student name" />
               </FormField>
 
-              <FormField label="Amount" error={errors.amount?.message}>
-                <Input type="number" step="0.01" {...register("amount")} placeholder="Amount" />
+              <FormField label="Student ID" error={errors.studentId?.message}>
+                <Input 
+                  type="number" 
+                  {...register("studentId")} 
+                  placeholder="Student ID" 
+                />
               </FormField>
 
-              <FormField label="Due Date" error={errors.dueDate?.message}>
-                <Input type="date" {...register("dueDate")} />
+              <FormField label="Amount (NPR)" error={errors.amount?.message}>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                    Rs.
+                  </span>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    {...register("amount")} 
+                    placeholder="0.00"
+                    className="pl-12"
+                  />
+                </div>
               </FormField>
+
+              <NepaliDatePickerField
+                name="dueDate"
+                control={control}
+                label="Due Date (Nepali)"
+                error={errors.dueDate?.message}
+              />
 
               <FormField label="Status" error={errors.status?.message}>
                 <Controller

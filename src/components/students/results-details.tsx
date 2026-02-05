@@ -32,6 +32,7 @@ interface ManageResultProps {
 
 const schema = yup.object({
   studentName: yup.string().required("Student name is required"),
+  studentId: yup.number().required("Student ID is required"),
   class: yup.string().required("Class is required"),
   totalMarks: yup.number().required("Total marks is required").min(0),
   percentage: yup.number().required("Percentage is required").min(0).max(100),
@@ -50,7 +51,6 @@ export default function ManageResultDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -61,15 +61,20 @@ export default function ManageResultDetails({
 
   useEffect(() => {
     if (result) {
-      setValue("studentName", result.studentName);
-      setValue("class", result.class);
-      setValue("totalMarks", result.totalMarks);
-      setValue("percentage", result.percentage);
-      setValue("result", result.result);
+      reset({
+        studentName: result.studentName,
+        studentId: result.studentId,
+        class: result.class,
+        totalMarks: result.totalMarks,
+        percentage: result.percentage,
+        result: result.result,
+      });
     } else {
-      reset();
+      reset({
+        result: "Pass",
+      });
     }
-  }, [result, setValue, reset]);
+  }, [result, reset]);
 
   const onSubmit = (data: FormData) => {
     if (result) {
@@ -98,6 +103,10 @@ export default function ManageResultDetails({
             <Section title="Result Details">
               <FormField label="Student Name" error={errors.studentName?.message}>
                 <Input {...register("studentName")} placeholder="Student name" />
+              </FormField>
+
+              <FormField label="Student ID" error={errors.studentId?.message}>
+                <Input type="number" {...register("studentId")} placeholder="Student ID" />
               </FormField>
 
               <FormField label="Class" error={errors.class?.message}>

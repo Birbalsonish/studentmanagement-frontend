@@ -37,6 +37,10 @@ const columns: ColumnDef<Grade>[] = [
     header: "Student Name",
   },
   {
+    accessorKey: "studentId",
+    header: "Student ID",
+  },
+  {
     accessorKey: "subject",
     header: "Subject",
   },

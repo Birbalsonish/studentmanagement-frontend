@@ -23,6 +23,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useEffect } from "react";
 import type { Attendance } from "@/lib/types";
+import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
 
 interface ManageAttendanceProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ interface ManageAttendanceProps {
 
 const schema = yup.object({
   studentName: yup.string().required("Student name is required"),
+  studentId: yup.number().required("Student ID is required"),
   date: yup.string().required("Date is required"),
   status: yup.string().oneOf(["Present", "Absent", "Leave"]).required("Status is required"),
 });
@@ -48,7 +50,6 @@ export default function ManageAttendanceDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -59,13 +60,18 @@ export default function ManageAttendanceDetails({
 
   useEffect(() => {
     if (attendance) {
-      setValue("studentName", attendance.studentName);
-      setValue("date", attendance.date);
-      setValue("status", attendance.status);
+      reset({
+        studentName: attendance.studentName,
+        studentId: attendance.studentId,
+        date: attendance.date,
+        status: attendance.status,
+      });
     } else {
-      reset();
+      reset({
+        status: "Present",
+      });
     }
-  }, [attendance, setValue, reset]);
+  }, [attendance, reset]);
 
   const onSubmit = (data: FormData) => {
     if (attendance) {
@@ -96,9 +102,20 @@ export default function ManageAttendanceDetails({
                 <Input {...register("studentName")} placeholder="Student name" />
               </FormField>
 
-              <FormField label="Date" error={errors.date?.message}>
-                <Input type="date" {...register("date")} />
+              <FormField label="Student ID" error={errors.studentId?.message}>
+                <Input 
+                  type="number" 
+                  {...register("studentId")} 
+                  placeholder="Student ID" 
+                />
               </FormField>
+
+              <NepaliDatePickerField
+                name="date"
+                control={control}
+                label="Date (Nepali)"
+                error={errors.date?.message}
+              />
 
               <FormField label="Status" error={errors.status?.message}>
                 <Controller

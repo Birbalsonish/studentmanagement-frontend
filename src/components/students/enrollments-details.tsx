@@ -23,6 +23,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useEffect } from "react";
 import type { Enrollment } from "@/lib/types";
+import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
 
 interface ManageEnrollmentProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ interface ManageEnrollmentProps {
 
 const schema = yup.object({
   studentName: yup.string().required("Student name is required"),
+  studentId: yup.number().required("Student ID is required"),
   rollNo: yup.string().required("Roll No is required"),
   course: yup.string().required("Course is required"),
   enrolledOn: yup.string().required("Enrollment date is required"),
@@ -50,7 +52,6 @@ export default function ManageEnrollmentDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -61,15 +62,20 @@ export default function ManageEnrollmentDetails({
 
   useEffect(() => {
     if (enrollment) {
-      setValue("studentName", enrollment.studentName);
-      setValue("rollNo", enrollment.rollNo);
-      setValue("course", enrollment.course);
-      setValue("enrolledOn", enrollment.enrolledOn);
-      setValue("status", enrollment.status);
+      reset({
+        studentName: enrollment.studentName,
+        studentId: enrollment.studentId,
+        rollNo: enrollment.rollNo,
+        course: enrollment.course,
+        enrolledOn: enrollment.enrolledOn,
+        status: enrollment.status,
+      });
     } else {
-      reset();
+      reset({
+        status: "Active",
+      });
     }
-  }, [enrollment, setValue, reset]);
+  }, [enrollment, reset]);
 
   const onSubmit = (data: FormData) => {
     if (enrollment) {
@@ -100,6 +106,10 @@ export default function ManageEnrollmentDetails({
                 <Input {...register("studentName")} placeholder="Student name" />
               </FormField>
 
+              <FormField label="Student ID" error={errors.studentId?.message}>
+                <Input type="number" {...register("studentId")} placeholder="Student ID" />
+              </FormField>
+
               <FormField label="Roll No" error={errors.rollNo?.message}>
                 <Input {...register("rollNo")} placeholder="Roll No" />
               </FormField>
@@ -108,9 +118,12 @@ export default function ManageEnrollmentDetails({
                 <Input {...register("course")} placeholder="Course" />
               </FormField>
 
-              <FormField label="Enrolled On" error={errors.enrolledOn?.message}>
-                <Input type="date" {...register("enrolledOn")} />
-              </FormField>
+              <NepaliDatePickerField
+                name="enrolledOn"
+                control={control}
+                label="Enrolled On (Nepali)"
+                error={errors.enrolledOn?.message}
+              />
 
               <FormField label="Status" error={errors.status?.message}>
                 <Controller

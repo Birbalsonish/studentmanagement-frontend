@@ -7,7 +7,7 @@ export interface Student {
   name: string;
   email: string;
   phone: string;
-  dob: string;
+  dob: string;  // This is already here - it stores Nepali date (YYYY-MM-DD format)
   studentId: string;
   class: string;
   rollNo: number;

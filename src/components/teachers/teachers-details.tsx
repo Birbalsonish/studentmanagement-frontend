@@ -23,6 +23,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useEffect } from "react";
 import type { Teacher } from "@/lib/types";
+import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
 
 interface ManageTeacherProps {
   isOpen: boolean;
@@ -52,7 +53,6 @@ export default function ManageTeacherDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -63,17 +63,21 @@ export default function ManageTeacherDetails({
 
   useEffect(() => {
     if (teacher) {
-      setValue("name", teacher.name);
-      setValue("email", teacher.email);
-      setValue("phone", teacher.phone);
-      setValue("dob", teacher.dob);
-      setValue("teacherId", teacher.teacherId);
-      setValue("subject", teacher.subject);
-      setValue("status", teacher.status);
+      reset({
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        dob: teacher.dob,
+        teacherId: teacher.teacherId,
+        subject: teacher.subject,
+        status: teacher.status,
+      });
     } else {
-      reset();
+      reset({
+        status: "Active",
+      });
     }
-  }, [teacher, setValue, reset]);
+  }, [teacher, reset]);
 
   const onSubmit = (data: FormData) => {
     if (teacher) {
@@ -112,9 +116,12 @@ export default function ManageTeacherDetails({
                 <Input {...register("phone")} placeholder="Phone number" />
               </FormField>
 
-              <FormField label="Date of Birth" error={errors.dob?.message}>
-                <Input type="date" {...register("dob")} />
-              </FormField>
+              <NepaliDatePickerField
+                name="dob"
+                control={control}
+                label="Date of Birth (Nepali)"
+                error={errors.dob?.message}
+              />
 
               <FormField label="Teacher ID" error={errors.teacherId?.message}>
                 <Input {...register("teacherId")} placeholder="Teacher ID" />

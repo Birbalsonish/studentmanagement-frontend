@@ -52,7 +52,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Pending Fees"
-          value="Rs1,20,000"
+          value="Rs. 1,20,000"
           icon={Wallet}
           gradient="from-yellow-500 to-orange-400"
         />

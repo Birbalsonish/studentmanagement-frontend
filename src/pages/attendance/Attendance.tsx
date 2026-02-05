@@ -13,18 +13,21 @@ import type { Attendance } from "@/lib/types";
 const mockAttendance: Attendance[] = [
   {
     id: 1,
+    studentId: 1,
     studentName: "John Doe",
     date: "2025-02-01",
     status: "Present",
   },
   {
     id: 2,
+    studentId: 2,
     studentName: "Jane Smith",
     date: "2025-02-01",
     status: "Absent",
   },
   {
     id: 3,
+    studentId: 3,
     studentName: "Rahul Sharma",
     date: "2025-02-01",
     status: "Leave",
@@ -35,6 +38,10 @@ const columns: ColumnDef<Attendance>[] = [
   {
     accessorKey: "studentName",
     header: "Student Name",
+  },
+   {
+    accessorKey: "studentId",
+    header: "Student ID",
   },
   {
     accessorKey: "date",

@@ -37,6 +37,10 @@ const columns: ColumnDef<Enrollment>[] = [
     header: "Student Name",
   },
   {
+    accessorKey: "studentId",
+    header: "Student ID",
+  },
+  {
     accessorKey: "rollNo",
     header: "Roll No",
   },

@@ -13,6 +13,7 @@ import type { Fee } from "@/lib/types";
 const mockFees: Fee[] = [
   {
     id: 1,
+    studentId: 1,
     studentName: "John Doe",
     amount: 5000,
     dueDate: "2025-02-15",
@@ -20,6 +21,7 @@ const mockFees: Fee[] = [
   },
   {
     id: 2,
+    studentId: 2,
     studentName: "Jane Smith",
     amount: 5000,
     dueDate: "2025-02-15",
@@ -27,6 +29,7 @@ const mockFees: Fee[] = [
   },
   {
     id: 3,
+    studentId: 3,
     studentName: "Rahul Sharma",
     amount: 5000,
     dueDate: "2025-01-15",
@@ -40,9 +43,13 @@ const columns: ColumnDef<Fee>[] = [
     header: "Student Name",
   },
   {
+    accessorKey: "studentId",
+    header: "Student ID",
+  },
+  {
     accessorKey: "amount",
     header: "Amount",
-    cell: (info) => `₹${info.getValue()}`,
+    cell: (info) => `Rs. ${info.getValue()}`,
   },
   {
     accessorKey: "dueDate",
@@ -117,19 +124,19 @@ export default function Fees() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
             title="Total Amount"
-            value={`Rs${totalAmount}`}
+            value={`Rs. ${totalAmount}`}
             icon={DollarSign}
             color="bg-blue-500/70 text-white"
           />
           <StatCard
             title="Paid Amount"
-            value={`Rs${paidAmount}`}
+            value={`Rs. ${paidAmount}`}
             icon={CheckCircle}
             color="bg-green-500/70 text-white"
           />
           <StatCard
             title="Pending Amount"
-            value={`Rs${pendingAmount}`}
+            value={`Rs. ${pendingAmount}`}
             icon={AlertCircle}
             color="bg-red-500/70 text-white"
           />

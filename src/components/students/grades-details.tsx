@@ -32,6 +32,7 @@ interface ManageGradeProps {
 
 const schema = yup.object({
   studentName: yup.string().required("Student name is required"),
+  studentId: yup.number().required("Student ID is required"),
   subject: yup.string().required("Subject is required"),
   marks: yup.number().required("Marks is required").min(0).max(100),
   grade: yup.string().required("Grade is required"),
@@ -50,7 +51,6 @@ export default function ManageGradeDetails({
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -62,15 +62,21 @@ export default function ManageGradeDetails({
 
   useEffect(() => {
     if (grade) {
-      setValue("studentName", grade.studentName);
-      setValue("subject", grade.subject);
-      setValue("marks", grade.marks);
-      setValue("grade", grade.grade);
-      setValue("result", grade.result);
+      reset({
+        studentName: grade.studentName,
+        studentId: grade.studentId,
+        subject: grade.subject,
+        marks: grade.marks,
+        grade: grade.grade,
+        result: grade.result,
+      });
     } else {
-      reset();
+      reset({
+        result: "Pass",
+        grade: "A",
+      });
     }
-  }, [grade, setValue, reset]);
+  }, [grade, reset]);
 
   const onSubmit = (data: FormData) => {
     if (grade) {
@@ -99,6 +105,10 @@ export default function ManageGradeDetails({
             <Section title="Grade Details">
               <FormField label="Student Name" error={errors.studentName?.message}>
                 <Input {...register("studentName")} placeholder="Student name" />
+              </FormField>
+
+              <FormField label="Student ID" error={errors.studentId?.message}>
+                <Input type="number" {...register("studentId")} placeholder="Student ID" />
               </FormField>
 
               <FormField label="Subject" error={errors.subject?.message}>
