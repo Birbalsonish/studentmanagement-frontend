@@ -1,55 +1,21 @@
-// src/lib/types.ts - Clean and working version
-
-/* ================= ENTITY INTERFACES ================= */
+// Updated types to match Laravel backend API
 
 export interface Student {
   id: number;
   name: string;
   email: string;
   phone: string;
-  dob: string;  // This is already here - it stores Nepali date (YYYY-MM-DD format)
-  studentId: string;
-  class: string;
-  rollNo: number;
+  date_of_birth: string;
+  address?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  gender: "Male" | "Female" | "Other";
   status: "Active" | "Inactive";
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Grade {
-  id: number;
-  studentId: number;
-  studentName: string;
-  subject: string;
-  marks: number;
-  grade: string;
-  result: "Pass" | "Fail";
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Result {
-  id: number;
-  studentId: number;
-  studentName: string;
-  class: string;
-  totalMarks: number;
-  percentage: number;
-  result: "Pass" | "Fail";
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface Enrollment {
-  id: number;
-  studentId: number;
-  studentName: string;
-  rollNo: string;
-  course: string;
-  enrolledOn: string;
-  status: "Active" | "Completed";
-  createdAt?: string;
-  updatedAt?: string;
+  admission_number: string;
+  admission_date: string;
+  profile_image?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Teacher {
@@ -57,352 +23,179 @@ export interface Teacher {
   name: string;
   email: string;
   phone: string;
-  dob: string;
-  teacherId: string;
-  subject: string;
+  address?: string;
+  gender: "Male" | "Female" | "Other";
+  qualification?: string;
+  specialization?: string;
+  joining_date: string;
+  salary?: number;
   status: "Active" | "Inactive";
-  createdAt?: string;
-  updatedAt?: string;
+  employee_id: string;
+  profile_image?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface ClassData {
+export interface Class {
   id: number;
   name: string;
-  teacherName: string;
-  studentCount: number;
+  section?: string;
+  teacher_id?: number;
+  capacity: number;
+  room_number?: string;
   status: "Active" | "Inactive";
-  createdAt?: string;
-  updatedAt?: string;
+  description?: string;
+  teacher?: Teacher;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Subject {
   id: number;
   name: string;
   code: string;
-  teacherName: string;
+  teacher_id?: number;
+  class_id?: number;
+  credits: number;
+  type: "Theory" | "Practical" | "Both";
   status: "Active" | "Inactive";
-  createdAt?: string;
-  updatedAt?: string;
+  description?: string;
+  teacher?: Teacher;
+  class?: Class;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Grade {
+  id: number;
+  student_id: number;
+  subject_id: number;
+  exam_type: string;
+  marks_obtained: number;
+  total_marks: number;
+  percentage: number;
+  grade: string;
+  exam_date: string;
+  academic_year: string;
+  remarks?: string;
+  student?: Student;
+  subject?: Subject;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Result {
+  id: number;
+  student_id: number;
+  class_id: number;
+  exam_type: string;
+  total_marks: number;
+  obtained_marks: number;
+  percentage: number;
+  grade: string;
+  division?: string;
+  result_status: "Pass" | "Fail";
+  rank?: number;
+  academic_year: string;
+  remarks?: string;
+  student?: Student;
+  class?: Class;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Enrollment {
+  id: number;
+  student_id: number;
+  class_id: number;
+  enrollment_date: string;
+  academic_year: string;
+  status: "Active" | "Completed" | "Dropped";
+  remarks?: string;
+  student?: Student;
+  class?: Class;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Attendance {
   id: number;
-  studentName: string;
-  studentId?: number;
+  student_id: number;
+  class_id: number;
+  subject_id?: number;
   date: string;
-  status: "Present" | "Absent" | "Leave";
-  createdAt?: string;
-  updatedAt?: string;
+  status: "Present" | "Absent" | "Late" | "Excused";
+  check_in_time?: string;
+  check_out_time?: string;
+  remarks?: string;
+  student?: Student;
+  class?: Class;
+  subject?: Subject;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Fee {
   id: number;
-  studentName: string;
-  studentId?: number;
+  student_id: number;
+  fee_type: string;
   amount: number;
-  dueDate: string;
-  status: "Paid" | "Pending" | "Overdue";
-  createdAt?: string;
-  updatedAt?: string;
+  paid_amount: number;
+  pending_amount: number;
+  due_date: string;
+  paid_date?: string;
+  status: "Paid" | "Pending" | "Overdue" | "Partial";
+  payment_method?: string;
+  transaction_id?: string;
+  academic_year: string;
+  remarks?: string;
+  student?: Student;
+  created_at?: string;
+  updated_at?: string;
 }
 
-/* ================= API RESPONSE TYPES ================= */
-
+// API Response types
 export interface ApiResponse<T> {
   success: boolean;
-  data?: T;
+  data: T;
   message?: string;
-  error?: string;
-  details?: string[];
 }
 
-export interface ApiListResponse<T> {
-  success: boolean;
-  data?: T[];
-  message?: string;
-  error?: string;
-  details?: string[];
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}
-
-export interface ApiErrorResponse {
-  success: false;
-  error: string;
-  message?: string;
-  details?: string[];
-  code?: string;
-}
-
-/* ================= PAGINATION TYPES ================= */
-
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}
-
-export interface PaginationResponse {
-  page: number;
-  limit: number;
+export interface PaginatedResponse<T> {
+  current_page: number;
+  data: T[];
+  first_page_url: string;
+  from: number;
+  last_page: number;
+  last_page_url: string;
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number;
   total: number;
-  pages: number;
 }
 
-/* ================= FILTER TYPES ================= */
-
-export interface StudentFilters {
-  status?: "Active" | "Inactive";
-  class?: string;
-  search?: string;
-}
-
-export interface TeacherFilters {
-  status?: "Active" | "Inactive";
-  subject?: string;
-  search?: string;
-}
-
-export interface AttendanceFilters {
-  startDate?: string;
-  endDate?: string;
-  studentId?: number;
-  status?: "Present" | "Absent" | "Leave";
-}
-
-export interface FeeFilters {
-  status?: "Paid" | "Pending" | "Overdue";
-  studentId?: number;
-  dateRange?: {
-    start: string;
-    end: string;
+export interface DashboardData {
+  overview: {
+    total_students: number;
+    total_teachers: number;
+    total_classes: number;
+    total_subjects: number;
+    total_enrollments: number;
   };
-}
-
-/* ================= FORM REQUEST TYPES ================= */
-
-export type CreateStudentRequest = Omit<Student, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateStudentRequest = Partial<Omit<Student, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateTeacherRequest = Omit<Teacher, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateTeacherRequest = Partial<Omit<Teacher, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateGradeRequest = Omit<Grade, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateGradeRequest = Partial<Omit<Grade, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateResultRequest = Omit<Result, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateResultRequest = Partial<Omit<Result, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateEnrollmentRequest = Omit<Enrollment, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateEnrollmentRequest = Partial<Omit<Enrollment, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateClassRequest = Omit<ClassData, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateClassRequest = Partial<Omit<ClassData, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateSubjectRequest = Omit<Subject, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateSubjectRequest = Partial<Omit<Subject, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateAttendanceRequest = Omit<Attendance, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateAttendanceRequest = Partial<Omit<Attendance, "id" | "createdAt" | "updatedAt">>;
-
-export type CreateFeeRequest = Omit<Fee, "id" | "createdAt" | "updatedAt">;
-
-export type UpdateFeeRequest = Partial<Omit<Fee, "id" | "createdAt" | "updatedAt">>;
-
-/* ================= DASHBOARD TYPES ================= */
-
-export interface DashboardStats {
-  totalStudents: number;
-  totalTeachers: number;
-  totalClasses: number;
-  todayAttendance: number;
-  pendingFees: number;
-}
-
-export interface MonthlyEnrollment {
-  month: string;
-  enrollments: number;
-}
-
-export interface AttendanceOverview {
-  present: number;
-  absent: number;
-  leave: number;
-}
-
-export interface RevenueData {
-  month: string;
-  revenue: number;
-}
-
-/* ================= REPORT TYPES ================= */
-
-export interface StudentReport {
-  totalStudents: number;
-  activeStudents: number;
-  inactiveStudents: number;
-  byClass: Record<string, number>;
-}
-
-export interface AttendanceReport {
-  date: string;
-  totalPresent: number;
-  totalAbsent: number;
-  totalLeave: number;
-  percentage: number;
-}
-
-export interface FeeReport {
-  totalAmount: number;
-  paidAmount: number;
-  pendingAmount: number;
-  overdueAmount: number;
-  paymentPercentage: number;
-}
-
-/* ================= AUTH TYPES ================= */
-
-export interface User {
-  id: number;
-  email: string;
-  name: string;
-  role: "admin" | "teacher" | "staff";
-  status: "Active" | "Inactive";
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-  refreshToken?: string;
-  expiresIn?: number;
-}
-
-/* ================= ERROR TYPES ================= */
-
-export class ApiError extends Error {
-  public readonly name = "ApiError";
-
-  constructor(
-    public readonly statusCode: number,
-    public readonly errorCode: string,
-    message: string,
-    public readonly details?: string[]
-  ) {
-    super(message);
-    Object.setPrototypeOf(this, ApiError.prototype);
-  }
-}
-
-export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-
-export interface RequestConfig {
-  method: HttpMethod;
-  headers?: Record<string, string>;
-  data?: Record<string, unknown>;
-  params?: Record<string, unknown>;
-  timeout?: number;
-}
-
-/* ================= UTILITY TYPES ================= */
-
-export type EntityType = Student | Teacher | Grade | Result | Enrollment | ClassData | Subject | Attendance | Fee;
-
-export type AllFilters = StudentFilters | TeacherFilters | AttendanceFilters | FeeFilters;
-
-export type AllRequests =
-  | CreateStudentRequest
-  | CreateTeacherRequest
-  | CreateGradeRequest
-  | CreateResultRequest
-  | CreateEnrollmentRequest
-  | CreateClassRequest
-  | CreateSubjectRequest
-  | CreateAttendanceRequest
-  | CreateFeeRequest;
-
-/* ================= CONSTANTS ================= */
-
-export const STATUS = {
-  ACTIVE: "Active",
-  INACTIVE: "Inactive",
-} as const;
-
-export const RESULT = {
-  PASS: "Pass",
-  FAIL: "Fail",
-} as const;
-
-export const ATTENDANCE_STATUS = {
-  PRESENT: "Present",
-  ABSENT: "Absent",
-  LEAVE: "Leave",
-} as const;
-
-export const FEE_STATUS = {
-  PAID: "Paid",
-  PENDING: "Pending",
-  OVERDUE: "Overdue",
-} as const;
-
-export const ENROLLMENT_STATUS = {
-  ACTIVE: "Active",
-  COMPLETED: "Completed",
-} as const;
-
-/* ================= FORM STATE TYPES ================= */
-
-export interface FormState {
-  isLoading: boolean;
-  error: string | null;
-  success: boolean;
-  data?: Record<string, unknown>;
-}
-
-export interface TableState {
-  data: EntityType[];
-  isLoading: boolean;
-  error: string | null;
-  pagination: PaginationResponse;
-  filters: AllFilters;
-}
-
-/* ================= MODAL TYPES ================= */
-
-export interface ModalState {
-  isOpen: boolean;
-  mode: "create" | "edit" | "view";
-  data?: EntityType;
-}
-
-/* ================= NOTIFICATION TYPES ================= */
-
-export type NotificationType = "success" | "error" | "warning" | "info";
-
-export interface Notification {
-  id: string;
-  type: NotificationType;
-  message: string;
-  duration?: number;
-  action?: {
-    label: string;
-    onClick: () => void;
+  recent_enrollments: Enrollment[];
+  fee_statistics: {
+    total_fees: number;
+    collected_fees: number;
+    pending_fees: number;
+    overdue_fees: number;
   };
+  attendance_summary: {
+    total_today: number;
+    present_today: number;
+    absent_today: number;
+    attendance_rate: number;
+  };
+  top_performers: any[];
 }

@@ -1,315 +1,134 @@
-// src/services/api.ts - Fixed with type-only imports
-
 import axios from 'axios';
-import type { AxiosInstance, AxiosError } from 'axios';
-import type {
-  Student,
-  Teacher,
-  Grade,
-  Result,
-  Enrollment,
-  ClassData,
-  Subject,
-  Attendance,
-  Fee,
-  ApiResponse,
-  ApiListResponse,
-  PaginationParams,
-  StudentFilters,
-  TeacherFilters,
-  AttendanceFilters,
-  FeeFilters,
-} from '@/lib/types';
 
-// Get API URL from environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Create axios instance
-const api: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+// Create axios instance with base configuration
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  timeout: 10000,
 });
 
-// Request interceptor for adding auth token
+// Add request interceptor for logging (optional)
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    console.log('API Request:', config.method?.toUpperCase(), config.url);
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor for error handling
+// Add response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      // Server responded with error
+      console.error('API Error:', error.response.status, error.response.data);
+    } else if (error.request) {
+      // Request made but no response
+      console.error('Network Error:', error.message);
+    } else {
+      console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }
 );
 
-/* ================= STUDENT SERVICE ================= */
-
+// Student Service
 export const studentService = {
-  getAll: (params?: PaginationParams & StudentFilters) =>
-    api.get<ApiListResponse<Student>>('/students', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Student>>(`/students/${id}`),
-
-  create: (data: Omit<Student, 'id'>) =>
-    api.post<ApiResponse<Student>>('/students', data),
-
-  update: (id: number, data: Partial<Student>) =>
-    api.put<ApiResponse<Student>>(`/students/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/students/${id}`),
-
-  search: (query: string) =>
-    api.get<ApiListResponse<Student>>('/students/search', { params: { q: query } }),
+  getAll: (params?: any) => api.get('/students', { params }),
+  getById: (id: number) => api.get(`/students/${id}`),
+  create: (data: any) => api.post('/students', data),
+  update: (id: number, data: any) => api.put(`/students/${id}`, data),
+  delete: (id: number) => api.delete(`/students/${id}`),
 };
 
-/* ================= TEACHER SERVICE ================= */
-
+// Teacher Service
 export const teacherService = {
-  getAll: (params?: PaginationParams & TeacherFilters) =>
-    api.get<ApiListResponse<Teacher>>('/teachers', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Teacher>>(`/teachers/${id}`),
-
-  create: (data: Omit<Teacher, 'id'>) =>
-    api.post<ApiResponse<Teacher>>('/teachers', data),
-
-  update: (id: number, data: Partial<Teacher>) =>
-    api.put<ApiResponse<Teacher>>(`/teachers/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/teachers/${id}`),
-
-  search: (query: string) =>
-    api.get<ApiListResponse<Teacher>>('/teachers/search', { params: { q: query } }),
+  getAll: (params?: any) => api.get('/teachers', { params }),
+  getById: (id: number) => api.get(`/teachers/${id}`),
+  create: (data: any) => api.post('/teachers', data),
+  update: (id: number, data: any) => api.put(`/teachers/${id}`, data),
+  delete: (id: number) => api.delete(`/teachers/${id}`),
 };
 
-/* ================= GRADE SERVICE ================= */
-
-export const gradeService = {
-  getAll: (params?: PaginationParams) =>
-    api.get<ApiListResponse<Grade>>('/grades', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Grade>>(`/grades/${id}`),
-
-  getByStudent: (studentId: number) =>
-    api.get<ApiListResponse<Grade>>('/grades', { params: { studentId } }),
-
-  create: (data: Omit<Grade, 'id'>) =>
-    api.post<ApiResponse<Grade>>('/grades', data),
-
-  update: (id: number, data: Partial<Grade>) =>
-    api.put<ApiResponse<Grade>>(`/grades/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/grades/${id}`),
-};
-
-/* ================= RESULT SERVICE ================= */
-
-export const resultService = {
-  getAll: (params?: PaginationParams) =>
-    api.get<ApiListResponse<Result>>('/results', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Result>>(`/results/${id}`),
-
-  getByStudent: (studentId: number) =>
-    api.get<ApiListResponse<Result>>('/results', { params: { studentId } }),
-
-  create: (data: Omit<Result, 'id'>) =>
-    api.post<ApiResponse<Result>>('/results', data),
-
-  update: (id: number, data: Partial<Result>) =>
-    api.put<ApiResponse<Result>>(`/results/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/results/${id}`),
-};
-
-/* ================= ENROLLMENT SERVICE ================= */
-
-export const enrollmentService = {
-  getAll: (params?: PaginationParams) =>
-    api.get<ApiListResponse<Enrollment>>('/enrollments', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Enrollment>>(`/enrollments/${id}`),
-
-  getByStudent: (studentId: number) =>
-    api.get<ApiListResponse<Enrollment>>('/enrollments', { params: { studentId } }),
-
-  create: (data: Omit<Enrollment, 'id'>) =>
-    api.post<ApiResponse<Enrollment>>('/enrollments', data),
-
-  update: (id: number, data: Partial<Enrollment>) =>
-    api.put<ApiResponse<Enrollment>>(`/enrollments/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/enrollments/${id}`),
-};
-
-/* ================= CLASS SERVICE ================= */
-
+// Class Service
 export const classService = {
-  getAll: (params?: PaginationParams) =>
-    api.get<ApiListResponse<ClassData>>('/classes', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<ClassData>>(`/classes/${id}`),
-
-  create: (data: Omit<ClassData, 'id'>) =>
-    api.post<ApiResponse<ClassData>>('/classes', data),
-
-  update: (id: number, data: Partial<ClassData>) =>
-    api.put<ApiResponse<ClassData>>(`/classes/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/classes/${id}`),
+  getAll: (params?: any) => api.get('/classes', { params }),
+  getById: (id: number) => api.get(`/classes/${id}`),
+  create: (data: any) => api.post('/classes', data),
+  update: (id: number, data: any) => api.put(`/classes/${id}`, data),
+  delete: (id: number) => api.delete(`/classes/${id}`),
 };
 
-/* ================= SUBJECT SERVICE ================= */
-
+// Subject Service
 export const subjectService = {
-  getAll: (params?: PaginationParams) =>
-    api.get<ApiListResponse<Subject>>('/subjects', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Subject>>(`/subjects/${id}`),
-
-  getByTeacher: (teacherName: string) =>
-    api.get<ApiListResponse<Subject>>('/subjects', { params: { teacherName } }),
-
-  create: (data: Omit<Subject, 'id'>) =>
-    api.post<ApiResponse<Subject>>('/subjects', data),
-
-  update: (id: number, data: Partial<Subject>) =>
-    api.put<ApiResponse<Subject>>(`/subjects/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/subjects/${id}`),
+  getAll: (params?: any) => api.get('/subjects', { params }),
+  getById: (id: number) => api.get(`/subjects/${id}`),
+  create: (data: any) => api.post('/subjects', data),
+  update: (id: number, data: any) => api.put(`/subjects/${id}`, data),
+  delete: (id: number) => api.delete(`/subjects/${id}`),
 };
 
-/* ================= ATTENDANCE SERVICE ================= */
+// Grade Service
+export const gradeService = {
+  getAll: (params?: any) => api.get('/grades', { params }),
+  getById: (id: number) => api.get(`/grades/${id}`),
+  create: (data: any) => api.post('/grades', data),
+  update: (id: number, data: any) => api.put(`/grades/${id}`, data),
+  delete: (id: number) => api.delete(`/grades/${id}`),
+};
 
+// Result Service
+export const resultService = {
+  getAll: (params?: any) => api.get('/results', { params }),
+  getById: (id: number) => api.get(`/results/${id}`),
+  create: (data: any) => api.post('/results', data),
+  update: (id: number, data: any) => api.put(`/results/${id}`, data),
+  delete: (id: number) => api.delete(`/results/${id}`),
+};
+
+// Enrollment Service
+export const enrollmentService = {
+  getAll: (params?: any) => api.get('/enrollments', { params }),
+  getById: (id: number) => api.get(`/enrollments/${id}`),
+  create: (data: any) => api.post('/enrollments', data),
+  update: (id: number, data: any) => api.put(`/enrollments/${id}`, data),
+  delete: (id: number) => api.delete(`/enrollments/${id}`),
+};
+
+// Attendance Service
 export const attendanceService = {
-  getAll: (params?: PaginationParams & AttendanceFilters) =>
-    api.get<ApiListResponse<Attendance>>('/attendance', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Attendance>>(`/attendance/${id}`),
-
-  getByDate: (date: string) =>
-    api.get<ApiListResponse<Attendance>>('/attendance', { params: { date } }),
-
-  getByStudent: (studentId: number) =>
-    api.get<ApiListResponse<Attendance>>('/attendance', { params: { studentId } }),
-
-  create: (data: Omit<Attendance, 'id'>) =>
-    api.post<ApiResponse<Attendance>>('/attendance', data),
-
-  update: (id: number, data: Partial<Attendance>) =>
-    api.put<ApiResponse<Attendance>>(`/attendance/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/attendance/${id}`),
-
-  markBulk: (data: Omit<Attendance, 'id'>[]) =>
-    api.post<ApiResponse<Attendance[]>>('/attendance/bulk', { records: data }),
+  getAll: (params?: any) => api.get('/attendance', { params }),
+  getById: (id: number) => api.get(`/attendance/{id}`),
+  create: (data: any) => api.post('/attendance', data),
+  bulkCreate: (data: any) => api.post('/attendance/bulk', data),
+  update: (id: number, data: any) => api.put(`/attendance/${id}`, data),
+  delete: (id: number) => api.delete(`/attendance/${id}`),
 };
 
-/* ================= FEE SERVICE ================= */
-
+// Fee Service
 export const feeService = {
-  getAll: (params?: PaginationParams & FeeFilters) =>
-    api.get<ApiListResponse<Fee>>('/fees', { params }),
-
-  getById: (id: number) =>
-    api.get<ApiResponse<Fee>>(`/fees/${id}`),
-
-  getByStudent: (studentId: number) =>
-    api.get<ApiListResponse<Fee>>('/fees', { params: { studentId } }),
-
-  create: (data: Omit<Fee, 'id'>) =>
-    api.post<ApiResponse<Fee>>('/fees', data),
-
-  update: (id: number, data: Partial<Fee>) =>
-    api.put<ApiResponse<Fee>>(`/fees/${id}`, data),
-
-  delete: (id: number) =>
-    api.delete<ApiResponse<void>>(`/fees/${id}`),
-
-  getByStatus: (status: 'Paid' | 'Pending' | 'Overdue') =>
-    api.get<ApiListResponse<Fee>>('/fees', { params: { status } }),
+  getAll: (params?: any) => api.get('/fees', { params }),
+  getById: (id: number) => api.get(`/fees/${id}`),
+  create: (data: any) => api.post('/fees', data),
+  update: (id: number, data: any) => api.put(`/fees/${id}`, data),
+  delete: (id: number) => api.delete(`/fees/${id}`),
+  recordPayment: (id: number, data: any) => api.post(`/fees/${id}/payment`, data),
 };
 
-/* ================= DASHBOARD SERVICE ================= */
-
+// Dashboard Service
 export const dashboardService = {
-  getStats: () =>
-    api.get('/dashboard/stats'),
-
-  getMonthlyEnrollments: (month?: number) =>
-    api.get('/dashboard/enrollments', { params: { month } }),
-
-  getAttendanceOverview: () =>
-    api.get('/dashboard/attendance'),
-
-  getMonthlyRevenue: () =>
-    api.get('/dashboard/revenue'),
-
-  getReports: () =>
-    api.get('/dashboard/reports'),
+  getOverview: () => api.get('/dashboard'),
+  getStatistics: (params?: any) => api.get('/dashboard/statistics', { params }),
 };
 
-/* ================= AUTH SERVICE (For Future) ================= */
-
-export const authService = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-
-  logout: () =>
-    api.post('/auth/logout'),
-
-  refreshToken: () =>
-    api.post('/auth/refresh'),
-
-  getCurrentUser: () =>
-    api.get('/auth/me'),
-};
-
-/* ================= ERROR HANDLING ================= */
-
-export const handleApiError = (error: AxiosError): string => {
-  if (error.response?.status === 400) {
-    return 'Invalid input. Please check your data.';
-  } else if (error.response?.status === 401) {
-    return 'Unauthorized. Please login again.';
-  } else if (error.response?.status === 404) {
-    return 'Resource not found.';
-  } else if (error.response?.status === 500) {
-    return 'Server error. Please try again later.';
-  }
-  return 'An error occurred. Please try again.';
-};
+// Health Check
+export const healthCheck = () => api.get('/health');
 
 export default api;

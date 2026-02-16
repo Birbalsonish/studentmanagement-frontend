@@ -21,20 +21,26 @@ import { Separator } from "@/components/ui/separator";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useEffect } from "react";
-import type { ClassData } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { Class } from "@/lib/types";
+import { classService, teacherService } from "@/lib/api";
 
 interface ManageClassProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  classData?: ClassData | null;
+  classData?: Class | null;
+  onSuccess?: () => void;
 }
 
+// Updated schema to match Laravel backend
 const schema = yup.object({
   name: yup.string().required("Class name is required"),
-  teacherName: yup.string().required("Teacher name is required"),
-  studentCount: yup.number().required("Student count is required").min(0),
+  section: yup.string().optional(),
+  teacher_id: yup.number().optional().positive(),
+  capacity: yup.number().required("Capacity is required").positive(),
+  room_number: yup.string().optional(),
   status: yup.string().oneOf(["Active", "Inactive"]).required("Status is required"),
+  description: yup.string().optional(),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -43,45 +49,106 @@ export default function ManageClassDetails({
   isOpen,
   onOpenChange,
   classData,
+  onSuccess,
 }: ManageClassProps) {
+  const [loading, setLoading] = useState(false);
+  const [teachers, setTeachers] = useState<any[]>([]);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     control,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
       status: "Active",
+      capacity: 30,
     },
   });
 
+  // Fetch teachers for dropdown
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const response = await teacherService.getAll();
+        const teachersData = response.data.data.data || response.data.data;
+        setTeachers(Array.isArray(teachersData) ? teachersData : []);
+      } catch (error) {
+        console.error("Error fetching teachers:", error);
+      }
+    };
+
+    if (isOpen) {
+      fetchTeachers();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (classData) {
-      setValue("name", classData.name);
-      setValue("teacherName", classData.teacherName);
-      setValue("studentCount", classData.studentCount);
-      setValue("status", classData.status);
+      reset({
+        name: classData.name,
+        section: classData.section || "",
+        teacher_id: classData.teacher_id,
+        capacity: classData.capacity,
+        room_number: classData.room_number || "",
+        status: classData.status,
+        description: classData.description || "",
+      });
     } else {
-      reset();
+      reset({
+        status: "Active",
+        capacity: 30,
+      });
     }
-  }, [classData, setValue, reset]);
+  }, [classData, reset]);
 
-  const onSubmit = (data: FormData) => {
-    if (classData) {
-      console.log("Update Class:", { ...classData, ...data });
-    } else {
-      console.log("Create Class:", data);
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
+    try {
+      const submitData = {
+        name: data.name,
+        section: data.section || null,
+        teacher_id: data.teacher_id || null,
+        capacity: Number(data.capacity),
+        room_number: data.room_number || null,
+        status: data.status,
+        description: data.description || null,
+      };
+
+      if (classData) {
+        await classService.update(classData.id, submitData);
+        alert("Class updated successfully!");
+      } else {
+        await classService.create(submitData);
+        alert("Class created successfully!");
+      }
+
+      reset();
+      onOpenChange(false);
+
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error("Error saving class:", error);
+
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const errorMessages = Object.values(errors).flat().join(", ");
+        alert(`Validation Error: ${errorMessages}`);
+      } else {
+        alert(classData ? "Failed to update class" : "Failed to create class");
+      }
+    } finally {
+      setLoading(false);
     }
-    reset();
-    onOpenChange(false);
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="min-w-[30vw]">
+      <SheetContent className="min-w-[30vw] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{classData ? "Edit Class" : "Add Class"}</SheetTitle>
           <SheetDescription>
@@ -94,19 +161,62 @@ export default function ManageClassDetails({
         <div className="px-4 py-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Section title="Class Details">
-              <FormField label="Class Name" error={errors.name?.message}>
-                <Input {...register("name")} placeholder="Class name (e.g., 10th A)" />
+              <FormField label="Class Name *" error={errors.name?.message}>
+                <Input {...register("name")} placeholder="Grade 10" />
               </FormField>
 
-              <FormField label="Teacher Name" error={errors.teacherName?.message}>
-                <Input {...register("teacherName")} placeholder="Teacher name" />
+              <FormField label="Section" error={errors.section?.message}>
+                <Input {...register("section")} placeholder="A, B, C, etc." />
               </FormField>
 
-              <FormField label="Student Count" error={errors.studentCount?.message}>
-                <Input type="number" {...register("studentCount")} placeholder="Number of students" />
+              <FormField label="Class Teacher" error={errors.teacher_id?.message}>
+                <Controller
+                  name="teacher_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.toString() || ""}
+                      onValueChange={(value) => field.onChange(value ? Number(value) : undefined)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select teacher (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+  {teachers.map((teacher) => (
+    <SelectItem
+      key={teacher.id}
+      value={teacher.id.toString()}
+    >
+      {teacher.name} ({teacher.employee_id})
+    </SelectItem>
+  ))}
+</SelectContent>
+
+                    </Select>
+                  )}
+                />
               </FormField>
 
-              <FormField label="Status" error={errors.status?.message}>
+              <FormField label="Capacity *" error={errors.capacity?.message}>
+                <Controller
+                  name="capacity"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      type="number"
+                      placeholder="30"
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Room Number" error={errors.room_number?.message}>
+                <Input {...register("room_number")} placeholder="Room 101" />
+              </FormField>
+
+              <FormField label="Status *" error={errors.status?.message}>
                 <Controller
                   name="status"
                   control={control}
@@ -123,17 +233,21 @@ export default function ManageClassDetails({
                   )}
                 />
               </FormField>
+
+              <FormField label="Description" error={errors.description?.message}>
+                <Input {...register("description")} placeholder="Optional description" />
+              </FormField>
             </Section>
 
             <SheetFooter>
-              <Button type="submit">
-                {classData ? "Update" : "Save"} Class
-              </Button>
               <SheetClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={loading}>
                   Cancel
                 </Button>
               </SheetClose>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : classData ? "Update Class" : "Add Class"}
+              </Button>
             </SheetFooter>
           </form>
         </div>

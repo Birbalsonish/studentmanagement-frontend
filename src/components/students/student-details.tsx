@@ -21,24 +21,29 @@ import { Separator } from "@/components/ui/separator";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Student } from "@/lib/types";
-import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
+import { studentService } from "@/lib/api";
 
 interface ManageStudentProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   student?: Student | null;
+  onSuccess?: () => void;
 }
 
+// Updated schema to match Laravel backend
 const schema = yup.object({
   name: yup.string().required("Name is required"),
-  email: yup.string().email().required("Email is required"),
+  email: yup.string().email("Invalid email").required("Email is required"),
   phone: yup.string().required("Phone is required"),
-  dob: yup.string().required("Date of birth is required"),
-  studentId: yup.string().required("Student ID is required"),
-  class: yup.string().required("Class is required"),
-  rollNo: yup.number().required("Roll No is required"),
+  date_of_birth: yup.string().required("Date of birth is required"),
+  admission_number: yup.string().required("Admission number is required"),
+  admission_date: yup.string().required("Admission date is required"),
+  address: yup.string().optional(),
+  guardian_name: yup.string().optional(),
+  guardian_phone: yup.string().optional(),
+  gender: yup.string().oneOf(["Male", "Female", "Other"]).required("Gender is required"),
   status: yup.string().oneOf(["Active", "Inactive"]).required("Status is required"),
 });
 
@@ -48,7 +53,10 @@ export default function ManageStudentDetails({
   isOpen,
   onOpenChange,
   student,
+  onSuccess,
 }: ManageStudentProps) {
+  const [loading, setLoading] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -59,6 +67,7 @@ export default function ManageStudentDetails({
     resolver: yupResolver(schema),
     defaultValues: {
       status: "Active",
+      gender: "Male",
     },
   });
 
@@ -68,32 +77,64 @@ export default function ManageStudentDetails({
         name: student.name,
         email: student.email,
         phone: student.phone,
-        dob: student.dob,
-        studentId: student.studentId,
-        class: student.class,
-        rollNo: student.rollNo,
+        date_of_birth: student.date_of_birth,
+        admission_number: student.admission_number,
+        admission_date: student.admission_date,
+        address: student.address || "",
+        guardian_name: student.guardian_name || "",
+        guardian_phone: student.guardian_phone || "",
+        gender: student.gender,
         status: student.status,
       });
     } else {
       reset({
         status: "Active",
+        gender: "Male",
       });
     }
   }, [student, reset]);
 
-  const onSubmit = (data: FormData) => {
-    if (student) {
-      console.log("Update Student:", { ...student, ...data });
-    } else {
-      console.log("Create Student:", data);
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
+    try {
+      if (student) {
+        // Update existing student
+        const response = await studentService.update(student.id, data);
+        console.log("Student updated:", response.data);
+        alert("Student updated successfully!");
+      } else {
+        // Create new student
+        const response = await studentService.create(data);
+        console.log("Student created:", response.data);
+        alert("Student created successfully!");
+      }
+      
+      reset();
+      onOpenChange(false);
+      
+      // Refresh the student list
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error("Error saving student:", error);
+      
+      // Handle validation errors from Laravel
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const errorMessages = Object.values(errors).flat().join(", ");
+        alert(`Validation Error: ${errorMessages}`);
+      } else {
+        alert(student ? "Failed to update student" : "Failed to create student");
+      }
+    } finally {
+      setLoading(false);
     }
-    reset();
-    onOpenChange(false);
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="min-w-[30vw]">
+      <SheetContent className="min-w-[30vw] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{student ? "Edit Student" : "Add Student"}</SheetTitle>
           <SheetDescription>
@@ -105,39 +146,69 @@ export default function ManageStudentDetails({
 
         <div className="px-4 py-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <Section title="Student Details">
-              <FormField label="Name" error={errors.name?.message}>
-                <Input {...register("name")} placeholder="Full name" />
+            {/* Personal Information */}
+            <Section title="Personal Information">
+              <FormField label="Full Name *" error={errors.name?.message}>
+                <Input {...register("name")} placeholder="John Doe" />
               </FormField>
 
-              <FormField label="Email" error={errors.email?.message}>
-                <Input type="email" {...register("email")} placeholder="Email" />
+              <FormField label="Email *" error={errors.email?.message}>
+                <Input type="email" {...register("email")} placeholder="john@example.com" />
               </FormField>
 
-              <FormField label="Phone" error={errors.phone?.message}>
-                <Input {...register("phone")} placeholder="Phone number" />
+              <FormField label="Phone *" error={errors.phone?.message}>
+                <Input {...register("phone")} placeholder="+977 98XXXXXXXX" />
               </FormField>
 
-              <NepaliDatePickerField
-                name="dob"
-                control={control}
-                label="Date of Birth (Nepali)"
-                error={errors.dob?.message}
-              />
-
-              <FormField label="Student ID" error={errors.studentId?.message}>
-                <Input {...register("studentId")} placeholder="Student ID" />
+              <FormField label="Date of Birth *" error={errors.date_of_birth?.message}>
+                <Input 
+                  type="date" 
+                  {...register("date_of_birth")} 
+                />
               </FormField>
 
-              <FormField label="Class" error={errors.class?.message}>
-                <Input {...register("class")} placeholder="Class" />
+              <FormField label="Gender *" error={errors.gender?.message}>
+                <Controller
+                  name="gender"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </FormField>
 
-              <FormField label="Roll No" error={errors.rollNo?.message}>
-                <Input type="number" {...register("rollNo")} placeholder="Roll No" />
+              <FormField label="Address" error={errors.address?.message}>
+                <Input {...register("address")} placeholder="Street, City" />
+              </FormField>
+            </Section>
+
+            {/* Admission Information */}
+            <Section title="Admission Information">
+              <FormField label="Admission Number *" error={errors.admission_number?.message}>
+                <Input 
+                  {...register("admission_number")} 
+                  placeholder="ADM2024001"
+                  disabled={!!student}
+                />
               </FormField>
 
-              <FormField label="Status" error={errors.status?.message}>
+              <FormField label="Admission Date *" error={errors.admission_date?.message}>
+                <Input 
+                  type="date" 
+                  {...register("admission_date")} 
+                />
+              </FormField>
+
+              <FormField label="Status *" error={errors.status?.message}>
                 <Controller
                   name="status"
                   control={control}
@@ -156,15 +227,26 @@ export default function ManageStudentDetails({
               </FormField>
             </Section>
 
+            {/* Guardian Information */}
+            <Section title="Guardian Information">
+              <FormField label="Guardian Name" error={errors.guardian_name?.message}>
+                <Input {...register("guardian_name")} placeholder="Parent/Guardian name" />
+              </FormField>
+
+              <FormField label="Guardian Phone" error={errors.guardian_phone?.message}>
+                <Input {...register("guardian_phone")} placeholder="Guardian contact" />
+              </FormField>
+            </Section>
+
             <SheetFooter>
-              <Button type="submit">
-                {student ? "Update" : "Save"} Student
-              </Button>
               <SheetClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={loading}>
                   Cancel
                 </Button>
               </SheetClose>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : student ? "Update Student" : "Add Student"}
+              </Button>
             </SheetFooter>
           </form>
         </div>

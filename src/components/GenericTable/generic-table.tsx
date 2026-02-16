@@ -112,3 +112,4 @@ export function GenericTable<T extends { id: number }>({
     </div>
   );
 }
+

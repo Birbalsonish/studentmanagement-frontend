@@ -21,22 +21,27 @@ import { Separator } from "@/components/ui/separator";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Grade } from "@/lib/types";
+import { gradeService, studentService, subjectService } from "@/lib/api";
 
 interface ManageGradeProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   grade?: Grade | null;
+  onSuccess?: () => void;
 }
 
+// Updated schema to match Laravel backend
 const schema = yup.object({
-  studentName: yup.string().required("Student name is required"),
-  studentId: yup.number().required("Student ID is required"),
-  subject: yup.string().required("Subject is required"),
-  marks: yup.number().required("Marks is required").min(0).max(100),
-  grade: yup.string().required("Grade is required"),
-  result: yup.string().oneOf(["Pass", "Fail"]).required("Result is required"),
+  student_id: yup.number().required("Student is required").positive(),
+  subject_id: yup.number().required("Subject is required").positive(),
+  exam_type: yup.string().required("Exam type is required"),
+  marks_obtained: yup.number().required("Marks obtained is required").min(0),
+  total_marks: yup.number().required("Total marks is required").positive(),
+  exam_date: yup.string().required("Exam date is required"),
+  academic_year: yup.string().required("Academic year is required"),
+  remarks: yup.string().optional(),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -45,52 +50,136 @@ export default function ManageGradeDetails({
   isOpen,
   onOpenChange,
   grade,
+  onSuccess,
 }: ManageGradeProps) {
+  const [loading, setLoading] = useState(false);
+  const [students, setStudents] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
     control,
+    watch,
   } = useForm<FormData>({
     resolver: yupResolver(schema),
     defaultValues: {
-      result: "Pass",
-      grade: "A",
+      academic_year: new Date().getFullYear().toString(),
+      exam_date: new Date().toISOString().split('T')[0],
     },
   });
+
+  // Fetch students and subjects for dropdowns
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [studentsRes, subjectsRes] = await Promise.all([
+          studentService.getAll(),
+          subjectService.getAll(),
+        ]);
+
+        const studentsData = studentsRes.data.data.data || studentsRes.data.data;
+        const subjectsData = subjectsRes.data.data.data || subjectsRes.data.data;
+
+        setStudents(Array.isArray(studentsData) ? studentsData : []);
+        setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    if (isOpen) {
+      fetchData();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (grade) {
       reset({
-        studentName: grade.studentName,
-        studentId: grade.studentId,
-        subject: grade.subject,
-        marks: grade.marks,
-        grade: grade.grade,
-        result: grade.result,
+        student_id: Number(grade.student_id),
+        subject_id: Number(grade.subject_id),
+        exam_type: grade.exam_type,
+        marks_obtained: Number(grade.marks_obtained),
+        total_marks: Number(grade.total_marks),
+        exam_date: grade.exam_date,
+        academic_year: grade.academic_year,
+        remarks: grade.remarks || "",
       });
     } else {
       reset({
-        result: "Pass",
-        grade: "A",
+        academic_year: new Date().getFullYear().toString(),
+        exam_date: new Date().toISOString().split('T')[0],
       });
     }
   }, [grade, reset]);
 
-  const onSubmit = (data: FormData) => {
-    if (grade) {
-      console.log("Update Grade:", { ...grade, ...data });
-    } else {
-      console.log("Create Grade:", data);
+  // Auto-calculate percentage and grade
+  const totalMarks = watch("total_marks");
+  const marksObtained = watch("marks_obtained");
+
+  const calculatedPercentage = totalMarks && marksObtained
+    ? ((marksObtained / totalMarks) * 100).toFixed(2)
+    : "0";
+
+  const calculatedGrade = () => {
+    const percentage = parseFloat(calculatedPercentage);
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B+';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 50) return 'C';
+    if (percentage >= 40) return 'D';
+    return 'F';
+  };
+
+  const onSubmit = async (data: FormData) => {
+    setLoading(true);
+    try {
+      const submitData = {
+        student_id: Number(data.student_id),
+        subject_id: Number(data.subject_id),
+        exam_type: data.exam_type,
+        marks_obtained: Number(data.marks_obtained),
+        total_marks: Number(data.total_marks),
+        exam_date: data.exam_date,
+        academic_year: data.academic_year,
+        remarks: data.remarks || "",
+      };
+
+      if (grade) {
+        await gradeService.update(grade.id, submitData);
+        alert("Grade updated successfully!");
+      } else {
+        await gradeService.create(submitData);
+        alert("Grade created successfully!");
+      }
+
+      reset();
+      onOpenChange(false);
+
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error("Error saving grade:", error);
+
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const errorMessages = Object.values(errors).flat().join(", ");
+        alert(`Validation Error: ${errorMessages}`);
+      } else {
+        alert(grade ? "Failed to update grade" : "Failed to create grade");
+      }
+    } finally {
+      setLoading(false);
     }
-    reset();
-    onOpenChange(false);
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="min-w-[30vw]">
+      <SheetContent className="min-w-[30vw] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{grade ? "Edit Grade" : "Add Grade"}</SheetTitle>
           <SheetDescription>
@@ -103,72 +192,154 @@ export default function ManageGradeDetails({
         <div className="px-4 py-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Section title="Grade Details">
-              <FormField label="Student Name" error={errors.studentName?.message}>
-                <Input {...register("studentName")} placeholder="Student name" />
-              </FormField>
-
-              <FormField label="Student ID" error={errors.studentId?.message}>
-                <Input type="number" {...register("studentId")} placeholder="Student ID" />
-              </FormField>
-
-              <FormField label="Subject" error={errors.subject?.message}>
-                <Input {...register("subject")} placeholder="Subject" />
-              </FormField>
-
-              <FormField label="Marks" error={errors.marks?.message}>
-                <Input type="number" {...register("marks")} placeholder="Marks (0-100)" />
-              </FormField>
-
-              <FormField label="Grade" error={errors.grade?.message}>
+              <FormField label="Student *" error={errors.student_id?.message}>
                 <Controller
-                  name="grade"
+                  name="student_id"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select grade" />
+                        <SelectValue placeholder="Select student" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="A+">A+</SelectItem>
-                        <SelectItem value="A">A</SelectItem>
-                        <SelectItem value="B">B</SelectItem>
-                        <SelectItem value="C">C</SelectItem>
-                        <SelectItem value="D">D</SelectItem>
-                        <SelectItem value="F">F</SelectItem>
+                        {students.map((student) => (
+                          <SelectItem key={student.id} value={student.id.toString()}>
+                            {student.name} ({student.admission_number})
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
               </FormField>
 
-              <FormField label="Result" error={errors.result?.message}>
+              <FormField label="Subject *" error={errors.subject_id?.message}>
                 <Controller
-                  name="result"
+                  name="subject_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(Number(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map((subject) => (
+                          <SelectItem key={subject.id} value={subject.id.toString()}>
+                            {subject.name} ({subject.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Exam Type *" error={errors.exam_type?.message}>
+                <Controller
+                  name="exam_type"
                   control={control}
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select result" />
+                        <SelectValue placeholder="Select exam type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Pass">Pass</SelectItem>
-                        <SelectItem value="Fail">Fail</SelectItem>
+                        <SelectItem value="Mid-term">Mid-term</SelectItem>
+                        <SelectItem value="Final">Final</SelectItem>
+                        <SelectItem value="Quiz">Quiz</SelectItem>
+                        <SelectItem value="Assignment">Assignment</SelectItem>
+                        <SelectItem value="Practical">Practical</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
+                />
+              </FormField>
+
+              <FormField label="Marks Obtained *" error={errors.marks_obtained?.message}>
+                <Controller
+                  name="marks_obtained"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      type="number"
+                      placeholder="85"
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Total Marks *" error={errors.total_marks?.message}>
+                <Controller
+                  name="total_marks"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      type="number"
+                      placeholder="100"
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  )}
+                />
+              </FormField>
+
+              <FormField label="Percentage (Auto-calculated)">
+                <Input
+                  type="text"
+                  value={`${calculatedPercentage}%`}
+                  disabled
+                  className="bg-gray-100"
+                />
+              </FormField>
+
+              <FormField label="Grade (Auto-calculated)">
+                <Input
+                  type="text"
+                  value={calculatedGrade()}
+                  disabled
+                  className="bg-gray-100"
+                />
+              </FormField>
+
+              <FormField label="Exam Date *" error={errors.exam_date?.message}>
+                <Input
+                  type="date"
+                  {...register("exam_date")}
+                />
+              </FormField>
+
+              <FormField label="Academic Year *" error={errors.academic_year?.message}>
+                <Input
+                  {...register("academic_year")}
+                  placeholder="2024"
+                />
+              </FormField>
+
+              <FormField label="Remarks" error={errors.remarks?.message}>
+                <Input
+                  {...register("remarks")}
+                  placeholder="Optional remarks"
                 />
               </FormField>
             </Section>
 
             <SheetFooter>
-              <Button type="submit">
-                {grade ? "Update" : "Save"} Grade
-              </Button>
               <SheetClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" disabled={loading}>
                   Cancel
                 </Button>
               </SheetClose>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : grade ? "Update Grade" : "Add Grade"}
+              </Button>
             </SheetFooter>
           </form>
         </div>
