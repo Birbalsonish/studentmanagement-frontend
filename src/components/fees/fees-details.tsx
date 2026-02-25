@@ -24,6 +24,7 @@ import * as yup from "yup";
 import { useEffect, useState, useMemo } from "react";
 import type { Fee } from "@/lib/types";
 import { feeService, enrollmentService } from "@/lib/api";
+import { NepaliDatePickerField } from "@/components/common/NepaliDatePicekrField";
 
 interface ManageFeeProps {
   isOpen: boolean;
@@ -242,7 +243,7 @@ export default function ManageFeeDetails({
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <Section title="Student Selection">
               {/* Class Filter by Name */}
-              <FormField label="Filter by Class">
+              <FormField label="Filter by Class (Optional)">
                 <Select
                   value={selectedClassName}
                   onValueChange={handleClassChange}
@@ -404,17 +405,18 @@ export default function ManageFeeDetails({
                 </div>
               </FormField>
 
-              <FormField label="Due Date *" error={errors.due_date?.message}>
-                <Input
-                  type="date"
-                  {...register("due_date")}
-                />
-              </FormField>
+              {/* Nepali Date Picker for Due Date */}
+              <NepaliDatePickerField
+                name="due_date"
+                control={control}
+                label="Due Date (Nepali) *"
+                error={errors.due_date?.message}
+              />
 
               <FormField label="Academic Year *" error={errors.academic_year?.message}>
                 <Input
                   {...register("academic_year")}
-                  placeholder="2024"
+                  placeholder="2081"
                 />
               </FormField>
 
@@ -428,10 +430,30 @@ export default function ManageFeeDetails({
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Paid">Paid</SelectItem>
-                        <SelectItem value="Partial">Partial</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Overdue">Overdue</SelectItem>
+                        <SelectItem value="Paid">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            Paid
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Partial">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Partial
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Pending">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            Pending
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="Overdue">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                            Overdue
+                          </span>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -447,20 +469,47 @@ export default function ManageFeeDetails({
               </FormField>
 
               {/* Payment Summary */}
-              <div className="col-span-2 bg-gray-50 p-4 rounded-lg space-y-2">
-                <h4 className="font-semibold text-sm">Payment Summary</h4>
+              <div className="col-span-2 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-100">
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-blue-500 rounded"></span>
+                  Payment Summary
+                </h4>
                 <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Total Amount</p>
-                    <p className="font-semibold text-blue-600">Rs. {amount?.toFixed(2) || "0.00"}</p>
+                  <div className="bg-white p-3 rounded-md shadow-sm">
+                    <p className="text-muted-foreground text-xs mb-1">Total Amount</p>
+                    <p className="font-bold text-blue-600 text-lg">
+                      Rs. {amount?.toFixed(2) || "0.00"}
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Paid Amount</p>
-                    <p className="font-semibold text-green-600">Rs. {paidAmount?.toFixed(2) || "0.00"}</p>
+                  <div className="bg-white p-3 rounded-md shadow-sm">
+                    <p className="text-muted-foreground text-xs mb-1">Paid Amount</p>
+                    <p className="font-bold text-green-600 text-lg">
+                      Rs. {paidAmount?.toFixed(2) || "0.00"}
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Pending</p>
-                    <p className="font-semibold text-red-600">Rs. {pendingAmount.toFixed(2)}</p>
+                  <div className="bg-white p-3 rounded-md shadow-sm">
+                    <p className="text-muted-foreground text-xs mb-1">Pending</p>
+                    <p className="font-bold text-red-600 text-lg">
+                      Rs. {pendingAmount.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Payment Progress Bar */}
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Payment Progress</span>
+                    <span>
+                      {amount > 0 ? ((paidAmount / amount) * 100).toFixed(0) : 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${amount > 0 ? Math.min((paidAmount / amount) * 100, 100) : 0}%`,
+                      }}
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -516,7 +565,3 @@ function FormField({
     </div>
   );
 }
-
-
-
-

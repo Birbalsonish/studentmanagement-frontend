@@ -10,11 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DollarSign, CheckCircle, AlertCircle, Filter } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { DollarSign, CheckCircle, AlertCircle, Filter, Search, Eye, Download } from "lucide-react";
 import { type LucideIcon } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Fee } from "@/lib/types";
 import { feeService } from "@/lib/api";
+import NepaliDate from 'nepali-date-converter';
 
 export default function Fees() {
   const [isManage, setIsManage] = useState(false);
@@ -25,6 +35,13 @@ export default function Fees() {
   const [error, setError] = useState<string>("");
   const [selectedFeeType, setSelectedFeeType] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Preview modal state
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Fetch fees on mount
   useEffect(() => {
@@ -34,7 +51,7 @@ export default function Fees() {
   // Filter fees when filters change
   useEffect(() => {
     filterFees();
-  }, [fees, selectedFeeType, selectedStatus]);
+  }, [fees, selectedFeeType, selectedStatus, searchTerm]);
 
   const fetchFees = async () => {
     try {
@@ -61,6 +78,22 @@ export default function Fees() {
 
   const filterFees = () => {
     let filtered = [...fees];
+
+    // Filter by search term
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter((fee) => {
+        const studentName = fee.student?.name?.toLowerCase() || "";
+        const feeType = fee.fee_type?.toLowerCase() || "";
+        const academicYear = fee.academic_year?.toLowerCase() || "";
+        
+        return (
+          studentName.includes(search) ||
+          feeType.includes(search) ||
+          academicYear.includes(search)
+        );
+      });
+    }
 
     // Filter by fee type
     if (selectedFeeType !== "all") {
@@ -105,6 +138,90 @@ export default function Fees() {
   const handleClearFilters = () => {
     setSelectedFeeType("all");
     setSelectedStatus("all");
+    setSearchTerm("");
+  };
+
+  const handlePreviewReceipt = async (feeId: number) => {
+    try {
+      setLoadingPreview(true);
+      setIsPreviewOpen(true);
+      
+      const token = localStorage.getItem('token');
+      
+      // Use preview endpoint that returns HTML
+      const url = `http://localhost:8000/api/fees/${feeId}/receipt/preview?token=${token}`;
+      setPreviewUrl(url);
+      
+    } catch (error) {
+      console.error('Error previewing receipt:', error);
+      alert('Failed to preview receipt. Please try again.');
+      setIsPreviewOpen(false);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  const handleDownloadReceipt = async (feeId: number) => {
+    try {
+      setDownloadingPdf(true);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `http://localhost:8000/api/fees/${feeId}/receipt`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to generate receipt');
+      }
+
+      // Create blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `fee-receipt-${feeId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      // Show success message
+      const fee = fees.find(f => f.id === feeId);
+      if (fee) {
+        alert(`Receipt downloaded successfully for ${fee.student?.name || 'student'}!`);
+      }
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      alert('Failed to download receipt. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (selectedFee) {
+      handleDownloadReceipt(selectedFee.id);
+    }
+  };
+
+  const handlePrintFromPreview = () => {
+    const iframe = document.getElementById('receipt-preview-iframe') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.print();
+    }
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewUrl("");
+    setSelectedFee(null);
   };
 
   // Get unique fee types from data
@@ -134,7 +251,7 @@ export default function Fees() {
     };
   }, [filteredFees]);
 
-  // Table columns
+  // Table columns with preview button
   const columns = useMemo<ColumnDef<Fee>[]>(
     () => [
       {
@@ -170,7 +287,31 @@ export default function Fees() {
         id: "due_date",
         accessorKey: "due_date",
         header: "Due Date",
-        cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
+        cell: ({ getValue }) => {
+          try {
+            const englishDate = getValue() as string;
+            const date = new Date(englishDate);
+            const nepaliDate = new NepaliDate(date);
+            
+            return (
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">
+                  {nepaliDate.format('YYYY-MM-DD')} BS
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </span>
+              </div>
+            );
+          } catch (error) {
+            console.error('Error converting date:', error);
+            return getValue() as string;
+          }
+        },
       },
       {
         id: "status",
@@ -192,6 +333,36 @@ export default function Fees() {
             >
               {status}
             </span>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "Receipt",
+        cell: ({ row }) => {
+          const fee = row.original;
+          const canViewReceipt = Number(fee.paid_amount) > 0;
+          
+          return (
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedFee(fee);
+                  handlePreviewReceipt(fee.id);
+                }}
+                disabled={!canViewReceipt}
+                title={!canViewReceipt ? "No payment made yet" : "View Receipt"}
+                className={`${
+                  !canViewReceipt 
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "hover:bg-blue-50 hover:text-blue-600"
+                }`}
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+            </div>
           );
         },
       },
@@ -233,72 +404,94 @@ export default function Fees() {
         {/* Filters Section */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Filter className="w-4 h-4" />
-                <span>Filters:</span>
-              </div>
-
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Fee Type Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Fee Type</label>
-                  <Select value={selectedFeeType} onValueChange={setSelectedFeeType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Fee Types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Fee Types</SelectItem>
-                      {feeTypes.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Status Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Partial">Partial</SelectItem>
-                      <SelectItem value="Overdue">Overdue</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <div className="flex flex-col gap-4">
+              {/* Search Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Search</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by student name, fee type, or academic year..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
 
-              {/* Clear Filters Button */}
-              {(selectedFeeType !== "all" || selectedStatus !== "all") && (
-                <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                  Clear Filters
-                </Button>
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Filter className="w-4 h-4" />
+                  <span>Filters:</span>
+                </div>
+
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Fee Type Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Fee Type</label>
+                    <Select value={selectedFeeType} onValueChange={setSelectedFeeType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Fee Types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Fee Types</SelectItem>
+                        {feeTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Status</label>
+                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="Paid">Paid</SelectItem>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="Partial">Partial</SelectItem>
+                        <SelectItem value="Overdue">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                {(selectedFeeType !== "all" || selectedStatus !== "all" || searchTerm) && (
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                    Clear All
+                  </Button>
+                )}
+              </div>
+
+              {/* Active Filters Display */}
+              {(selectedFeeType !== "all" || selectedStatus !== "all" || searchTerm) && (
+                <div className="flex flex-wrap gap-2">
+                  {searchTerm && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      Search: {searchTerm}
+                    </span>
+                  )}
+                  {selectedFeeType !== "all" && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      Fee Type: {selectedFeeType}
+                    </span>
+                  )}
+                  {selectedStatus !== "all" && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      Status: {selectedStatus}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-
-            {/* Active Filters Display */}
-            {(selectedFeeType !== "all" || selectedStatus !== "all") && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {selectedFeeType !== "all" && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                    Fee Type: {selectedFeeType}
-                  </span>
-                )}
-                {selectedStatus !== "all" && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
-                    Status: {selectedStatus}
-                  </span>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -348,7 +541,7 @@ export default function Fees() {
                 columns={columns}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                searchKeys={["fee_type", "academic_year"]}
+                searchKeys={[]}
               />
             )}
           </CardContent>
@@ -362,6 +555,68 @@ export default function Fees() {
         fee={selectedFee}
         onSuccess={handleSuccess}
       />
+
+      {/* Receipt Preview Modal */}
+      <Dialog open={isPreviewOpen} onOpenChange={handleClosePreview}>
+        <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Fee Receipt Preview</DialogTitle>
+            <DialogDescription>
+              {selectedFee && `Receipt for ${selectedFee.student?.name || 'Student'} - ${selectedFee.fee_type}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden rounded-lg border">
+            {loadingPreview ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading receipt...</p>
+                </div>
+              </div>
+            ) : (
+              <iframe
+                id="receipt-preview-iframe"
+                src={previewUrl}
+                className="w-full h-full"
+                title="Receipt Preview"
+              />
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClosePreview}
+            >
+              Close
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handlePrintFromPreview}
+              disabled={loadingPreview}
+            >
+              🖨️ Print
+            </Button>
+            <Button
+              onClick={handleDownloadFromPreview}
+              disabled={loadingPreview || downloadingPdf}
+            >
+              {downloadingPdf ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
